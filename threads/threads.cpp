@@ -15,9 +15,10 @@ namespace Explain
         std::thread thd_;
 
     public:
-        template <typename TFunc, typename... TArgs>
-        explicit JoiningThread(TFunc&& f, TArgs&&... args)
-            : thd_{std::forward<TFunc>(f), std::forward<TArgs>(args)...}
+        template <typename TCallable, typename... TArgs,
+            typename = std::enable_if_t<!std::is_same_v<std::remove_cvref_t<TCallable>, JoiningThread>>>
+        explicit JoiningThread(TCallable&& f, TArgs&&... args)
+            : thd_{std::forward<TCallable>(f), std::forward<TArgs>(args)...}
         {
         }
 
