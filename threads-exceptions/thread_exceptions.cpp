@@ -4,8 +4,8 @@
 #include <iostream>
 #include <string>
 #include <thread>
-#include <vector>
 #include <variant>
+#include <vector>
 
 using namespace std::literals;
 
@@ -105,28 +105,30 @@ void background_work(size_t id, const std::string& text, Result<char>& result)
 
 int main()
 {
+    std::cout << "No id cores available: " << std::max(1u, std::thread::hardware_concurrency()) << std::endl;
+
     std::cout << "Main thread starts..." << std::endl;
     const std::string text = "Hello Threads";
 
-    Result<char> result_1;
-    Result<char> result_2;
+    std::vector<Result<char>> results(2);
 
     {
-        std::jthread thd_1{&background_work, 1, text, std::ref(result_1)};
-        std::jthread thd_2{&background_work, 2, std::string("One"), std::ref(result_2)};
+        std::jthread thd_1{&background_work, 1, text, std::ref(results[0])};
+        std::jthread thd_2{&background_work, 2, std::string("One"), std::ref(results[1])};
     }
+     // implicit join
 
-    try
+    for (auto& r : results)
     {
-        char c1 = result_1.get();
-        std::cout << "result_1: " << c1 << "\n";
-
-        char c2 = result_2.get();
-        std::cout << "result_2: " << c2 << "\n";
-    }
-    catch(const std::out_of_range& e)
-    {
-        std::cout << "Caught exception: " << e.what() << "\n";
+        try
+        {
+            char c = r.get();
+            std::cout << "result: " << c << "\n";
+        }
+        catch (const std::out_of_range& e)
+        {
+            std::cout << "Caught exception: " << e.what() << "\n";
+        }
     }
 
     std::cout << "Main thread ends..." << std::endl;

@@ -16,6 +16,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 aux_source_directory(. SRC_LIST)
 file(GLOB HEADERS_LIST "*.h" "*.hpp")
 
-add_executable(${TARGET_MAIN} ${SRC_LIST} ${HEADERS_LIST})
+add_executable(${TARGET_MAIN}_tests ${SRC_LIST} ${HEADERS_LIST})
 
-target_link_libraries(${TARGET_MAIN} PRIVATE Catch2::Catch2WithMain)
+target_link_libraries(${TARGET_MAIN}_tests PRIVATE Catch2::Catch2WithMain)

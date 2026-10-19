@@ -34,6 +34,12 @@ double mc_pi_single_thread(uintmax_t N)
 
 TEST_CASE("Monte-Carlo Pi - Single Thread")
 {
+    SECTION("Calculate Pi using single thread")
+    {
+        auto result = mc_pi_single_thread(N);
+        std::cout << "Calculated Pi: " << result << std::endl;
+    }
+
     BENCHMARK("Monte Carlo Pi - Single Thread")
     {
         return mc_pi_single_thread(N);
