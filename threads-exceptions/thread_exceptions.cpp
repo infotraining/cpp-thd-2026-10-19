@@ -49,7 +49,6 @@ int main()
         std::jthread thd_2{&background_work, 2, std::string("One"), std::ref(result_2), std::ref(eptr_2)};
     }
 
-
     if (eptr_1)
     {
         try
