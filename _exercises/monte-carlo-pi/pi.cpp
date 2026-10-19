@@ -41,7 +41,6 @@ void calculate_hits_with_local_counter(uintmax_t N, uintmax_t& hits)
         double x = dist(gen);
         double y = dist(gen);
         if (x * x + y * y <= 1)
-        if (x * x + y * y <= 1)
             ++local_hits;
     }
 
@@ -56,7 +55,6 @@ double mc_pi_single_thread(uintmax_t N)
     return static_cast<double>(hits) / N * 4;
 }
 
-//Dominik
 double mc_pi_multi_thread(uintmax_t N, uintmax_t num_threads = std::max(1u, std::thread::hardware_concurrency()))
 {
     std::vector<uintmax_t> hits(num_threads, 0);
