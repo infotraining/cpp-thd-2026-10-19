@@ -5,36 +5,48 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <variant>
 
 using namespace std::literals;
 
 template <typename T>
 class Result
 {
-    T value_;
-    std::exception_ptr eptr_;
+    std::variant<std::monostate, T, std::exception_ptr> value_;
 
 public:
-    void set_value(const T& value)
+    template <typename TValue>
+    void set_value(TValue&& value)
     {
-        value_ = value;
+        value_ = std::forward<TValue>(value);
     }
 
     void set_exception(std::exception_ptr eptr)
     {
-        eptr_ = eptr;
+        value_ = eptr;
     }
 
     T get()
     {
-        if (eptr_)
+        struct ValueVisitor
         {
-            std::rethrow_exception(eptr_);
-        }
-        else
-        {
-            return value_;
-        }
+            T operator()(std::monostate)
+            {
+                throw std::logic_error("Result/Exception not set");
+            }
+
+            T operator()(T& v) const
+            {
+                return std::move(v);
+            }
+
+            T operator()(std::exception_ptr eptr)
+            {
+                std::rethrow_exception(eptr);
+            }
+        };
+
+        return std::visit(ValueVisitor{}, value_);
     }
 };
 
