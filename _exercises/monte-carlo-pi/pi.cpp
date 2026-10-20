@@ -201,6 +201,63 @@ double mc_pi_multi_thread_mutex(uintmax_t N)
     return static_cast<double>(hits) / N * 4;
 }
 
+////////////////////////////////////////////////////////////
+// Monte-Carlo Pi with Atomic
+
+void calculate_hits_atomic(uintmax_t N, std::atomic<uintmax_t>& hits)
+{
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<double> dist(0.0, 1.0);
+
+    for (uintmax_t n = 0; n < N; ++n)
+    {
+        double x = dist(gen);
+        double y = dist(gen);
+        if (x * x + y * y <= 1)
+        {
+            //++hits;
+            hits.fetch_add(1, std::memory_order_relaxed); 
+        }
+    }
+}
+
+double mc_pi_multi_thread_atomic(uintmax_t N)
+{
+    std::atomic<uintmax_t> hits = 0;
+    
+    int num_cores = std::thread::hardware_concurrency();
+
+    std::vector<std::thread> threads;
+    std::vector<uintmax_t> results(num_cores, 0);
+
+    for (int i = 0; i < num_cores; ++i)
+    {
+        //std::cout << "Launching thread " << i << std::endl;
+        threads.push_back(std::thread([&]{
+            calculate_hits_atomic(N / num_cores, hits);
+        }));
+    }
+    for (auto& t : threads)
+        t.join();
+
+    return static_cast<double>(hits) / N * 4;
+}
+
+TEST_CASE("Monte-Carlo Pi - Multi Thread with Atomic")
+{
+    SECTION("Calculate Pi using multiple threads with mutex")
+    {
+        auto result = mc_pi_multi_thread_atomic(N);
+        std::cout << "Calculated Pi: " << result << std::endl;
+    }
+
+    BENCHMARK("Monte Carlo Pi - Multi Thread with Mutex")
+    {
+        return mc_pi_multi_thread_atomic(N);
+    };
+}
+
 TEST_CASE("Monte-Carlo Pi - Multi Thread with Mutex")
 {
     SECTION("Calculate Pi using multiple threads with mutex")

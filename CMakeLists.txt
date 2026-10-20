@@ -23,7 +23,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 ###########################################
 # Sanitizers
 ###########################################
-option(ENABLE_THREAD_SANITIZER "Build with ThreadSanitizer" ON)
+option(ENABLE_THREAD_SANITIZER "Build with ThreadSanitizer" OFF)
 if(ENABLE_THREAD_SANITIZER)
   if(NOT UNIX OR NOT CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     message(FATAL_ERROR "ThreadSanitizer is supported only with GCC or Clang on Unix-like platforms")

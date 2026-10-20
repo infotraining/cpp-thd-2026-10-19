@@ -14,22 +14,36 @@ using namespace std::literals;
 class Data
 {
     std::vector<int> data_;
-    // TODO
+    std::atomic<bool> is_data_ready_ = false;
+    double value_{};
 
 public:
     void read()
     {
         std::cout << "Start reading..." << std::endl;
         data_.resize(100);
-
+        
         std::random_device rnd;
         std::generate(begin(data_), end(data_), [&rnd] { return rnd() % 1000; });
         std::this_thread::sleep_for(2s);
+
         std::cout << "End reading..." << std::endl;
+        
+        // is_data_ready_ = true;
+        data_.push_back(665);
+
+        //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+        is_data_ready_.store(true, std::memory_order_release);  
     }
 
     void process(int id)
     {
+        while
+        (not is_data_ready_.load(std::memory_order_acquire))
+        //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX 
+
+        {}
+        
         long sum = std::accumulate(begin(data_), end(data_), 0L);
         std::cout << "Id: " << id << "; Sum: " << sum << std::endl;
     }
