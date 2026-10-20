@@ -16,13 +16,18 @@ class Dns
 public:
     Dns() = default;
 
+    Dns(std::unordered_map<Hostname, IpAddress> table)
+        : dns_table_{std::move(table)}
+    {
+    }
+
     bool add_record(const Hostname& hostname, const IpAddress& ip)
     {
         auto result = dns_table_.insert_or_assign(hostname, ip);
         return result.second;
     }
 
-    std::optional<IpAddress> resolve(const Hostname& hostname) 
+    std::optional<IpAddress> resolve(const Hostname& hostname) const
     {
         auto it = dns_table_.find(hostname);
         if (it != dns_table_.end())
@@ -31,7 +36,7 @@ public:
     }
 };
 
-void dns_client(Dns& dns, std::chrono::milliseconds delay)
+void dns_client(std::shared_ptr<const Dns> dns, std::chrono::milliseconds delay)
 {
     const auto entires_to_resolve = {
         "example.com",
@@ -43,7 +48,7 @@ void dns_client(Dns& dns, std::chrono::milliseconds delay)
 
     for (const auto& hostname : entires_to_resolve)
     {
-        if (auto ip = dns.resolve(hostname); ip)
+        if (auto ip = dns->resolve(hostname); ip)
             std::cout << hostname << " -> " << *ip << "\n";
         else
             std::cout << hostname << " not found\n";
@@ -58,19 +63,21 @@ int main()
 
     // TODO: Create an immutable Dns instance that safely lives throughout the lifetime of the threads
 
+
     std::jthread dns_client_thd_1;
 
     {
-        Dns dns;
-        dns.add_record("example.com", "93.184.216.34");
-        dns.add_record("example.org", "93.184.216.34");
-        
-        std::jthread dns_client_thd_2(dns_client, std::ref(dns), 100ms);
-        
-        dns.add_record("example.net", "93.184.216.34");
-        dns.add_record("thread-safety.com", "93.184.216.34");
-        dns.add_record("thread-safety.org", "93.184.216.34");
+        std::shared_ptr<const Dns> dns = []{ 
+            auto dns = std::make_shared<Dns>();
+            dns->add_record("example.com", "93.184.216.34");
+            dns->add_record("example.org", "93.184.216.34");
+            dns->add_record("example.net", "93.184.216.34");
+            dns->add_record("thread-safety.com", "93.184.216.34");
+            dns->add_record("thread-safety.org", "93.184.216.34");
+            return dns;
+        }();
 
-        dns_client_thd_1 = std::jthread(dns_client, std::ref(dns), 500ms);   
+        std::jthread dns_client_thd_2(dns_client, dns, 100ms);
+        dns_client_thd_1 = std::jthread(dns_client, dns, 500ms);   
     }
 }
