@@ -1,10 +1,12 @@
 #include <iostream>
 #include <thread>
+#include <mutex>
 
 class BankAccount
 {
     const int id_;
     double balance_;
+    mutable std::recursive_mutex mtx_;
 
 public:
     BankAccount(int id, double balance)
@@ -15,22 +17,42 @@ public:
 
     void print() const
     {
-        std::cout << "Bank Account #" << id_ << "; Balance = " << balance_ << std::endl;
+        // double current_balance{};
+
+        // {
+        //     std::lock_guard lk{mtx_};
+        //     current_balance = balance_;
+        // }
+        // std::cout << "Bank Account #" << id_ << "; Balance = " << current_balance << std::endl;
+
+        std::cout << "Bank Account #" << id_ << "; Balance = " << balance() << std::endl;
     }
 
     void transfer(BankAccount& to, double amount)
     {
-        balance_ -= amount;
-        to.balance_ += amount;
+#if __cplusplus < 201703L
+        std::unique_lock<std::mutex> lk_from{mtx_, std::defer_lock};
+        std::unique_lock<std::mutex> lk_to{to.mtx_, std::defer_lock};
+
+        std::lock(lk_from, lk_to); // C++11
+#else
+        std::scoped_lock lk{mtx_, to.mtx_}; // C++17
+#endif
+        // balance_ -= amount;
+        // to.balance_ += amount;
+        withdraw(amount);
+        to.deposit(amount);
     }
 
     void withdraw(double amount)
     {
+        std::lock_guard lk{mtx_};
         balance_ -= amount;
     }
 
     void deposit(double amount)
     {
+        std::lock_guard lk{mtx_};
         balance_ += amount;
     }
 
@@ -41,6 +63,7 @@ public:
 
     double balance() const
     {
+        std::lock_guard lk{mtx_};
         return balance_;
     }
 };
@@ -57,6 +80,12 @@ void make_deposits(BankAccount& ba, int no_of_operations)
         ba.deposit(1.0);
 }
 
+void make_transfers(BankAccount& ba_from, BankAccount& ba_to, int no_of_operations)
+{
+    for (int i = 0; i < no_of_operations; ++i)
+        ba_from.transfer(ba_to, 1.0);
+}
+
 int main()
 {
     const int NO_OF_ITERS = 10'000'000;
@@ -70,9 +99,16 @@ int main()
 
     std::thread thd1(&make_withdraws, std::ref(ba1), NO_OF_ITERS);
     std::thread thd2(&make_deposits, std::ref(ba1), NO_OF_ITERS);
+    std::thread thd3(&make_transfers, std::ref(ba1), std::ref(ba2), NO_OF_ITERS);
+    std::thread thd4(&make_transfers, std::ref(ba2), std::ref(ba1), NO_OF_ITERS);
+
+
+    std::cout << "Balance of ba1: " << ba1.balance() << std::endl;
 
     thd1.join();
     thd2.join();
+    thd3.join();
+    thd4.join();
 
     std::cout << "After all threads are done: ";
     ba1.print();
