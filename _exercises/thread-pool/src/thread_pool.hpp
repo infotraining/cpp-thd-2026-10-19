@@ -13,8 +13,7 @@ class ThreadPool
     ThreadSafeQueue<Task> tasks_;
     std::vector<std::jthread> threads_;
 
-    inline static const Task end_of_work{};
-
+    std::atomic<bool> is_done_{false};
 public:
     ThreadPool(size_t no_of_threads = std::thread::hardware_concurrency())
     {
@@ -32,7 +31,7 @@ public:
     {
         for(size_t i; i < threads_.size(); ++i)
         {
-            tasks_.push(end_of_work);
+            tasks_.push([this] { is_done_ = true; });
         }
     }   
 
@@ -51,13 +50,12 @@ private:
         while(true)
         {
             tasks_.pop(task);
+            task(); // running task in this thread
 
-            if (not task) // signal to return from thread
+            if (is_done_)
             {
                 return;
             }
-
-            task(); // running task in this thread
         }
     }
 };
