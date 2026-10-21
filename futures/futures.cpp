@@ -40,7 +40,7 @@ void save_to_file(const std::string& filename)
     synced_cout() << "File saved: " << filename << std::endl;
 }
 
-int main()
+void future_demo()
 {
     std::future<int> f_square_13 = std::async(std::launch::async, &calculate_square, 13);
     std::future<int> f_square_17 = std::async(std::launch::async, [] { return calculate_square(17); });
@@ -92,4 +92,69 @@ int main()
             synced_cout() << "Exception: " << e.what() << '\n';
         }
     }
+}
+
+void read_the_future(std::shared_future<int> sf)
+{
+    synced_cout() << "Start..." << "\n";
+
+    int result = sf.get();
+
+    synced_cout() << "Result = " << result << "\n";
+}
+
+void promise_demo()
+{
+    std::promise<int> my_promise; // asynchronous provider
+
+    std::future<int> f = my_promise.get_future();
+
+    std::shared_future sf = f.share();
+
+    {
+        std::jthread thd_1{&read_the_future, sf};
+        std::jthread thd_2{&read_the_future, sf};
+        
+        std::this_thread::sleep_for(2s);
+
+        my_promise.set_value(665);
+    }
+}
+
+template <typename Callable>
+auto spawn(Callable&& callable)
+{
+    using TResult = decltype(callable()); 
+
+    std::packaged_task<TResult()> pt(std::forward<Callable>(callable));
+    std::future<TResult> f_result = pt.get_future();
+
+    std::jthread thd{std::move(pt)}; // async call for callable
+    thd.detach();
+
+    return f_result;
+}
+
+void packaged_task_demo()
+{
+    std::packaged_task<int(int)> pt_1([](int n) { return calculate_square(n); });
+    std::future<int> f_result = pt_1.get_future();
+
+    std::jthread thd{std::move(pt_1), 13};
+
+    synced_cout() << "Result 13 = " << f_result.get() << "\n";
+
+    auto f_save = spawn([] { save_to_file("data1.txt"); });
+    spawn([] { save_to_file("data2.txt"); });
+
+    f_save.wait();
+}
+
+int main()
+{
+    // future_demo();
+
+    // promise_demo();
+
+    packaged_task_demo();
 }

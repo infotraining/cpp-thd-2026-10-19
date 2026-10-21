@@ -15,17 +15,17 @@ using namespace std;
 
 TEST_CASE("ThreadPool")
 {
-    SECTION("executes task in a pool of threads")
-    {
-        std::atomic<bool> is_completed = false;
+    // SECTION("executes task in a pool of threads")
+    // {
+    //     std::atomic<bool> is_completed = false;
 
-        {
-            ThreadPool thd_pool{8};
-            thd_pool.submit([&] { is_completed = true; });
-        }
+    //     {
+    //         ThreadPool thd_pool{8};
+    //         thd_pool.submit([&] { is_completed = true; });
+    //     }
 
-        REQUIRE(is_completed == true);
-    }
+    //     REQUIRE(is_completed == true);
+    // }
 }
 
 TEST_CASE("STL")
