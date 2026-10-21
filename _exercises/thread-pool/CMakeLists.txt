@@ -29,7 +29,7 @@ add_subdirectory(src)
 # Application
 #----------------------------------------
 add_executable(${PROJECT_NAME} main.cpp)
-target_link_libraries(${PROJECT_NAME} Threads::Threads thread_safe_queue_lib)
+target_link_libraries(${PROJECT_NAME} Threads::Threads thread_pool_lib)
 
 
 #----------------------------------------
