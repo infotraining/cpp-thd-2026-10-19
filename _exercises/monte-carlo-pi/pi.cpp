@@ -99,7 +99,7 @@ double mc_pi_multi_thread_with_local_counter(uintmax_t N, uintmax_t num_threads 
 }
 
 //---------------------------------------------------------------------------------------
-// Function to calculate the number of hits inside the unit circle for Monte Carlo Pi estimation
+// Monte-Carlo with aligned counter
 // Uses an aligned counter (to size of a cache line) to avoid false sharing in multi-threaded scenarios
 
 struct Counter
@@ -151,10 +151,28 @@ double mc_pi_multi_thread_with_aligned_counter(uintmax_t N, uintmax_t num_thread
     return static_cast<double>(total_hits) / N * 4;
 }
 
-///////////////////////////////////////////////////////////
+//---------------------------------------------------------------------------------------
 // Monte-Carlo Pi with Mutex
 
-void calculate_hits_mutex(uintmax_t N, uintmax_t& hits, std::mutex& mtx)
+void calculate_hits_mutex_hot_loop(uintmax_t N, uintmax_t& hits, std::mutex& mtx)
+{
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<double> dist(0.0, 1.0);
+
+    for (uintmax_t n = 0; n < N; ++n)
+    {
+        double x = dist(gen);
+        double y = dist(gen);
+        if (x * x + y * y <= 1)
+        {
+            std::lock_guard lk{mtx};
+            ++hits; // hot loop
+        }
+    }
+}
+
+void calculate_hits_mutex_late_update(uintmax_t N, uintmax_t& hits, std::mutex& mtx)
 {
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -192,7 +210,7 @@ double mc_pi_multi_thread_mutex(uintmax_t N)
     {
         //std::cout << "Launching thread " << i << std::endl;
         threads.push_back(std::thread([&, i]{
-            calculate_hits_mutex(N / num_cores, hits, mtx);
+            calculate_hits_mutex_hot_loop(N / num_cores, hits, mtx);
         }));
     }
     for (auto& t : threads)
@@ -201,10 +219,10 @@ double mc_pi_multi_thread_mutex(uintmax_t N)
     return static_cast<double>(hits) / N * 4;
 }
 
-////////////////////////////////////////////////////////////
-// Monte-Carlo Pi with Atomic
+//---------------------------------------------------------------------------------------
+// Monte-Carlo Pi with Mutex
 
-void calculate_hits_atomic(uintmax_t N, std::atomic<uintmax_t>& hits)
+void calculate_hits_atomic_hot_loop(uintmax_t N, std::atomic<uintmax_t>& hits)
 {
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -235,7 +253,7 @@ double mc_pi_multi_thread_atomic(uintmax_t N)
     {
         //std::cout << "Launching thread " << i << std::endl;
         threads.push_back(std::thread([&]{
-            calculate_hits_atomic(N / num_cores, hits);
+            calculate_hits_atomic_hot_loop(N / num_cores, hits);
         }));
     }
     for (auto& t : threads)
