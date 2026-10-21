@@ -11,6 +11,7 @@
 #include <ranges>
 #include <thread>
 #include <mutex>
+#include <future>
 
 const uintmax_t N = 1'000'000;
 
@@ -343,5 +344,57 @@ TEST_CASE("Monte-Carlo Pi - Many Threads with Aligned Counter")
     BENCHMARK("Monte Carlo Pi - Many Threads with Aligned Counter")
     {
         return mc_pi_multi_thread_with_aligned_counter(N);
+    };
+}
+
+//////////////////////////////////////////////////////////////////
+uintmax_t calculate_hits_future(uintmax_t N)
+{
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<double> dist(0.0, 1.0);
+
+    uintmax_t local_hits = 0;
+    for (uintmax_t n = 0; n < N; ++n)
+    {
+        double x = dist(gen);
+        double y = dist(gen);
+        if (x * x + y * y <= 1)
+            ++local_hits;
+    }
+
+    return local_hits;
+}
+
+double mc_pi_multi_thread_future(uintmax_t N, uintmax_t num_threads = std::max(1u, std::thread::hardware_concurrency()))
+{
+    uintmax_t chunk_size = N / num_threads;
+
+    std::vector<std::future<uintmax_t>> futures;
+    for (uintmax_t i = 0; i < num_threads; ++i)
+    {
+        futures.emplace_back(std::async(std::launch::async, calculate_hits_future, chunk_size));
+    }
+
+    uintmax_t total_hits = 0;
+    for (auto& future : futures)
+    {
+        total_hits += future.get();
+    }
+
+    return static_cast<double>(total_hits) / N * 4;
+}
+
+TEST_CASE("Monte-Carlo Pi - Many Threads with Future")
+{
+    SECTION("Calculate Pi using many threads with future")
+    {
+        auto result = mc_pi_multi_thread_future(N);
+        std::cout << "Calculated Pi: " << result << std::endl;
+    }
+
+    BENCHMARK("Monte Carlo Pi - Many Threads with Future")
+    {
+        return mc_pi_multi_thread_future(N);
     };
 }
